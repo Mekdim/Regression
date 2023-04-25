@@ -1,14 +1,40 @@
 ---
 title: "Stat615FinalProject"
+author: "Dhruv Jain & mekdim"
 output: html_document
 date: "2023-04-20"
 ---
 
-```{r }
-# 
-library('tidyverse')
-library('dplyr')
+```{r,warning=FALSE,message=FALSE }
+# calling all the libraries used in the code book 
 library(olsrr)
+library(tidyverse)
+library(dbplyr)
+library(dplyr)
+library(Matrix)
+library(MASS)
+library(ggplot2)
+library(tibble)
+library(data.table)
+library(olsrr)
+library(ggmosaic)
+library(ggmosaic)
+library(olsrr)
+library(ggforce)
+library(ggmap)
+library(ggthemes)
+library(purrr)
+library(keep)
+
+
+```
+
+# 1 About Data set 
+```{r}
+# offer a preliminary description of the data set. For example, indicate the size of the data source, describe the variables, and include any other data profile information that would be of interest.
+
+#data set source ??????????
+#data collection methos??????????
 
 # We had to randomly sample 300 rows from our original data. 
 # We then saved these 300 rows into csv file so that we can import them later.
@@ -30,14 +56,60 @@ insurance_new <- read_csv('insurance_300.csv')
 
 nrow(insurance_new)
 ncol(insurance_new)
+
 # Let us quickly investigate the summary of our dependent variable 
 #  The median insurance charge is around 10097 and the mean of 13283. The 
-# standard deviation is 11399. 
+# standard deviation is 11399.
+
 summary(insurance_new$charges)
 sd(insurance_new$charges)
+head(insurance_new,10)
+```
+## visualization 
+
+```{r}
+# caliing the data set using read csv file
+insurance_new <- read_csv('insurance_300.csv')
+# number of rows in data 
+nrow(insurance_new)
+# number of colums in data set 
+ncol(insurance_new)
+# colums names 
+colnames(insurance_new)
+# visual data set look like 
+head(insurance_new,10)
+# summary of data colum wise 
+summary(insurance_new)
+# calculating NA/missing data in columns 
+colSums(is.na(insurance_new))
+
+# converting to factor varaibale 
+insurance_new$sex = as.factor(insurance_new$sex)
+insurance_new$children = as.factor(insurance_new$children)
+insurance_new$smoker = as.factor(insurance_new$smoker)
+insurance_new$region = as.factor(insurance_new$region)
+
+insurance_new%>%
+  count(sex,children,smoker,region)%>%
+  arrange(sex, smoker)
+  
+
+
+insurance_new  
+ab <- insurance_new%>%
+  dplyr::select(age,smoker,sex)
+ab
+
+plot()
+```
+
+
+
+# 2  multicollinearity
+
+```{r}
 
 # Let do correlation matrix with the numeric variables first to see and inspect
-# multicoliinearity 
 #  As we can from the correlation  matrix, there seems no multi-colinearity. 
 # The highest correlation is between charges and age with only 0.24. But if we exclude charges
 # since charges is dependent variable, the highest correlation among the independent variables 
