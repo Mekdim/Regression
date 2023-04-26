@@ -26,7 +26,7 @@ library(purrr)
 library(keep)
 library(readr)
 library(gridExtra)
-
+library(randomForest)
 
 ```
 
@@ -197,6 +197,10 @@ numeric_insurance <- insurance_new[, c("bmi", "children", "age", "charges")]
 # clearly there is no pattern that we can see verifying our output from the 
 # correlation matrix. 
 pairs(numeric_insurance[,1:3], pch = 19, lower.panel = NULL)
+#
+```
+ Evaluating Various regression models using summary tables and statistics 
+```{r}
 
 #  Let us begin by using a multiple linear regression model that uses all the six variables. 
 #  From the summary table we see that our R squared and Adjusted r square are around 0.73 and the
@@ -264,12 +268,20 @@ lm(charges~ age + children + bmi +
    + sex:smoker + log(bmi)+ bmi*bmi + log(age) + age*age + log(age)*log(bmi), insurance_new) -> interactionModel
 summary(interactionModel)
 
+```
+Producing a reduced model (removing variables of our choice with justification)
+
+```{r}
 # #  Let eliminate all interaction 
-# terms whose p value is insignificant
+# terms or the single whose p value is insignificant. For this case our starting model has a lot 
+# of variables so after removing many of the variables we will have a reduced model.
+# Those variables whose p value is too high should be removed and a reduced model has to be produced. 
+# we run the reduced model below
 # our r squared slightly decreased to 0.8332 and the adjusted r squared to 0.8244. 
 # It is very small change to our previous step so it is fine to take this. The 
-# p values are also significant so this could be one candidate model
+# p values are also significant so for that reason we chose this model. This could be one candidate model
 # for our regression. 
+
 
 lm(charges~  children + bmi + 
       smoker + age:children + age:region + age:smoker+
@@ -311,8 +323,11 @@ lm(charges~  children + bmi +
 resid(interactionModelSignificant) -> residuals1
 plot(fitted(interactionModelSignificant), residuals1)
 abline(0,0)
+```
 
+Showing confidence intervals for  two of our chosen quantitative variables 
 
+```{r}
 #using this regression model Let us take at least two variables and find confidence interval
 # for the independent variables.  Let us take two such as  log(age) and bmi for example. 
 
@@ -337,6 +352,71 @@ t
 # lower bound 
 5125.69 - 1.9683 * 1406.95 
 
+
+
+```
+
+Researching and Applying a model analysis not discussed in the class
+```{r}
+# Here we will show how random forest model can be used on our full model or using 
+# all explanatory variables to predict the dependent variable charges. 
+# Random forest works by using if-else decision trees using all variables.
+# For example one possible path could be if a person is a non smoker, male and if he has
+# a bmi value above 90, the medical charge should approximately be 1000. This is just to 
+# show how it works under the hood but the actual mechanisms and branching rules are not as
+# trivial as  my example. For a continuous dependent variable, we should use random forest regressor
+# (it does regression but using random forest)
+# We will compare the root mean squared error using our random forest model and the regression
+# we had above 
+# 
+# 
+# Random Forest Model. 
+#install.packages("randomForest")
+set.seed(42)
+rf.fit <- randomForest(charges ~ ., data=insurance_new, ntree=3,
+                    keep.forest=FALSE, importance=TRUE)
+
+# from fitting the random forest model, we can see that the root mean squared is 37712690^(0.5). Rf.fit gives
+# us the squared value so we have to take the root of it to find the root mean square. so
+# 37712690^(0.5) = 6141.066. This random forest model produced worse result than our regression model. 
+# we got a value of 4858 as our best root mean squared error from our regressoin model.
+rf.fit
+
+# But also just like we can tune our regression model, we can also tune our random forest model.
+# Let us increase the number of trees from 3 to 300 in the random forest model. 
+# we get 25902511^(0.5) = 5089.451. So as we increase our number of trees the root mean squared 
+# approached our best regression model out put. Of course we can tune a lot of things
+# in the decision trees of random forest as well so random might give us a root mean square value less than
+# our regression model. 
+# The variability explained by this random forest model was also close to what we have in the regression model.
+# It is 80% here. 
+
+rf.fit <- randomForest(charges ~ ., data=insurance_new, ntree=300,
+                       keep.forest=FALSE, importance=TRUE)
+rf.fit
+
+
+# Let also this which variables were important according to the latest random forest model
+# we had. We see that smoker variable was very important in terms of information gain( it is one of the
+#best variable used in the decision tree and is found to be important interms of determing 
+# medical charges/bills. The other variables that are found important are age and BMI as we see from the diagram.)
+
+# children, region and sex had minimal impact compared to the other variables. 
+
+ImpData <- as.data.frame(importance(rf.fit))
+ImpData$Var.Names <- row.names(ImpData)
+
+ggplot(ImpData, aes(x=Var.Names, y=`%IncMSE`)) +
+  geom_segment( aes(x=Var.Names, xend=Var.Names, y=0, yend=`%IncMSE`), color="skyblue") +
+  geom_point(aes(size = IncNodePurity), color="blue", alpha=0.6) +
+  theme_light() +
+  coord_flip() +
+  theme(
+    legend.position="bottom",
+    panel.grid.major.y = element_blank(),
+    panel.border = element_blank(),
+    axis.ticks.y = element_blank()
+  )
 
 
 ```
