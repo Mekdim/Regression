@@ -1,8 +1,10 @@
 ---
 title: "Stat615FinalProject"
 author: "Dhruv Jain & mekdim"
-output: html_document
 date: "2023-04-20"
+output:
+  html_document: default
+  word_document: default
 ---
 
 ```{r,warning=FALSE,message=FALSE }
@@ -16,25 +18,37 @@ library(MASS)
 library(ggplot2)
 library(tibble)
 library(data.table)
-library(olsrr)
 library(ggmosaic)
-library(ggmosaic)
-library(olsrr)
 library(ggforce)
 library(ggmap)
 library(ggthemes)
 library(purrr)
 library(keep)
+library(readr)
+library(gridExtra)
 
 
 ```
 
-# 1 About Data set 
+# 1 
+
+## 1.1 About Data set 
 ```{r}
 # offer a preliminary description of the data set. For example, indicate the size of the data source, describe the variables, and include any other data profile information that would be of interest.
 
-#data set source ??????????
-#data collection methos??????????
+#data set source: https://www.kaggle.com/datasets/mirichoi0218/insurance
+
+# Columns Description
+
+#age: age of primary beneficiary
+#sex: insurance contractor gender, female, male
+#bmi: Body mass index, providing an understanding of body, weights that are relatively high or low relative to height,
+#objective index of body weight (kg / m ^ 2) using the ratio of height to weight, ideally 18.5 to 24.9
+#children: Number of children covered by health insurance / Number of dependents
+#smoker: Smoking
+#region: the beneficiary's residential area in the US, northeast, southeast, southwest, northwest.
+#charges: Individual medical costs billed by health insurance
+
 
 # We had to randomly sample 300 rows from our original data. 
 # We then saved these 300 rows into csv file so that we can import them later.
@@ -47,7 +61,20 @@ library(keep)
 #write.csv(insurance_300 , file = "Desktop/insurance_300.csv")
 
 # Let import the 300 rows 
-insurance_new <- read_csv('insurance_300.csv')
+
+# insurance_new <- read_csv("insurance_300.csv")
+
+# Read in CSV file and specify column types
+insurance_new <- read_csv("insurance_300.csv", 
+col_types = cols(
+  age = col_double(),
+  sex = col_character(),
+  bmi = col_double(),
+  children = col_double(),
+  smoker = col_character(),
+  region = col_character(),
+  charges = col_double()
+))
 #300 rows  and 7 columns 
 # This project is about determining the factors that affect medical costs billed by health insurance 
 # The independent variables include three categorical variables and three quantitative variables. 
@@ -65,11 +92,12 @@ summary(insurance_new$charges)
 sd(insurance_new$charges)
 head(insurance_new,10)
 ```
-## visualization 
+
+## 1.2  cleaning the data and type of columns 
 
 ```{r}
-# caliing the data set using read csv file
-insurance_new <- read_csv('insurance_300.csv')
+# calling the data set using read csv file
+# insurance_new <- read_csv('insurance_300.csv')
 # number of rows in data 
 nrow(insurance_new)
 # number of colums in data set 
@@ -78,18 +106,64 @@ ncol(insurance_new)
 colnames(insurance_new)
 # visual data set look like 
 head(insurance_new,10)
+# type of columns used in data frame (double, charterer)
+str(insurance_new)
+
 # summary of data colum wise 
 summary(insurance_new)
 # calculating NA/missing data in columns 
 colSums(is.na(insurance_new))
 
-# converting to factor varaibale 
+# converting to factor variable 
 insurance_new$sex = as.factor(insurance_new$sex)
-insurance_new$children = as.factor(insurance_new$children)
 insurance_new$smoker = as.factor(insurance_new$smoker)
-insurance_new$region = as.factor(insurance_new$region)
+# how many unique values 
+unique(insurance_new$sex)
+unique(insurance_new$children)
+unique(insurance_new$smoker)
+unique(insurance_new$region)
+```
+
+## 1.3 visualization
+
+```{r}
+
+# Does age affect medical charges for smoker? 
+ggplot(data = insurance_new , 
+       aes(x=age, y=charges,shape=smoker,color = smoker)) +
+  geom_point()+
+  geom_smooth(method=lm)
+# Yes the charges are increased as we increase the number of age. Now the fun part is if a person smokes he/she is paying more charges on medical then the person not smoking.
+
+# Does Body mass index (BMI) affect medical charges for smoker? 
+ggplot(data = insurance_new , 
+       aes(x=bmi, y=charges,shape=smoker,color = smoker)) +
+  geom_point()+
+  geom_smooth(method=lm)
+# One can clearly observe that smoking affect in BMI and incresased  with the medical expenses. 
+
+
+
+ggplot(data = insurance_new , 
+       aes(x=children, y=charges,shape=smoker))+
+  geom_point()+
+  stat_ellipse()
+
+
+
+
+
+# Who smoke a lot male or female ? 
+# does no. of children affect the score?
+ggplot(data = insurance_new , 
+       aes(x=children, y=smoker, shape=sex, color=sex)) +
+  geom_point()
+
+
+
 
 insurance_new%>%
+  filter(sex == "female")%>%
   count(sex,children,smoker,region)%>%
   arrange(sex, smoker)
   
@@ -100,7 +174,7 @@ ab <- insurance_new%>%
   dplyr::select(age,smoker,sex)
 ab
 
-plot()
+#plot()
 ```
 
 
@@ -108,7 +182,6 @@ plot()
 # 2  multicollinearity
 
 ```{r}
-
 # Let do correlation matrix with the numeric variables first to see and inspect
 #  As we can from the correlation  matrix, there seems no multi-colinearity. 
 # The highest correlation is between charges and age with only 0.24. But if we exclude charges
@@ -118,7 +191,8 @@ plot()
 # useful if they are included in the regression model as they dont have any correlation with each other. 
 
 numeric_insurance <- insurance_new[, c("bmi", "children", "age", "charges")]
-cor(numeric_insurance)
+#cor(numeric_insurance)
+
 # we can also the scatter plots between the independent variables 
 # clearly there is no pattern that we can see verifying our output from the 
 # correlation matrix. 
@@ -129,8 +203,7 @@ pairs(numeric_insurance[,1:3], pch = 19, lower.panel = NULL)
 # residual standard error is 5915. 
 #  The r squared value is high enough to be considered good but let us continue finding better fits. 
 
-lm(charges ~ age + children + bmi + region + sex + smoker ,  
-   insurance_new) -> x
+lm(charges ~ age + children + bmi + region + sex + smoker,insurance_new) -> x
 summary(x)
 
 
@@ -267,4 +340,3 @@ t
 
 
 ```
-
