@@ -199,6 +199,65 @@ numeric_insurance <- insurance_new[, c("bmi", "children", "age", "charges")]
 pairs(numeric_insurance[,1:3], pch = 19, lower.panel = NULL)
 #
 ```
+
+Matrix Method with just the quantitative variables 
+```{r}
+
+# Both the matrix and lm method produced the same coefficients . 
+lm(charges ~ age + children + bmi, data= insurance_new)
+
+X <- model.matrix(~age + children + bmi   , data=insurance_new )
+
+Y <- as.matrix(insurance_new%>%dplyr::select(charges) )
+
+Xm <- X
+Ym <- Y
+
+t(Xm) -> transposeXm
+transposeXm%*%Xm-> ProDuct1
+solve(ProDuct1)%*%transposeXm%*%Ym -> interceptandslope
+interceptandslope
+
+```
+Fitted and residual values from the matrix result 
+
+```{r}
+Xm %*% interceptandslope -> fitted_values  
+
+Ym -  Xm %*% interceptandslope -> residuals_values
+
+data.frame(residuals_values, fitted_values)
+```
+Matrix method with both quantitative and qualitative variables(dummy variables included automatically)
+```{r}
+
+# The results are the same using both the matrix method and lm method. 
+
+
+X <- model.matrix(~age + children + bmi  + region  + sex + smoker , data=insurance_new )
+
+Y <- as.matrix(insurance_new%>%dplyr::select(charges) )
+
+Xm <- X
+Ym <- Y
+
+t(Xm) -> transposeXm
+transposeXm%*%Xm-> ProDuct1
+solve(ProDuct1)%*%transposeXm%*%Ym -> interceptandslope
+interceptandslope
+#lm(charges ~ age + children + bmi + region + sex + smoker,insurance_new) -> x
+
+#summary(x)
+
+```
+
+lm method including both categorical and quantitative variables 
+
+```{r}
+lm(charges ~ age + children + bmi + region + sex + smoker,insurance_new) -> x
+
+summary(x)
+```
  Evaluating Various regression models using summary tables and statistics 
 ```{r}
 
